@@ -35,6 +35,23 @@ router.get('/', (req, res) => {
   });
 });
 
+router.get('/by-artist', (req, res) => {
+  const { artist } = req.query;
+  if (!artist) {
+    return res.status(400).json({
+      error: "You must provide an 'artist' parameter in URL"
+    });
+  }
+  db.query(`SELECT playlist.* FROM playlist
+    INNER JOIN track ON track.playlist_id = playlist.id
+    WHERE track.artist = ?`, [artist], (err, results) => {
+    if (err) {
+      return handleSQLError(err, res);
+    }
+    res.json(results);
+  });
+});
+
 router.get('/:id', (req, res) => {
   db.query('SELECT * FROM playlist WHERE id = ?', [req.params.id], (err, results) => {
     if (err) {
