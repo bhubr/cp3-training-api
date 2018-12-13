@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./db');
-const handleSQLError = require('./handleSQLError');
+const { handleSQLError, handleNotFound } = require('./handleErrors');
 
 const app = express();
 app.use(bodyParser.json());
@@ -23,9 +23,7 @@ app.get('/api/playlists/:id', (req, res) => {
       return handleSQLError(err, res);
     }
     if (!results.length) {
-      return res.status(404).json({
-        error: `Playlist ${req.params.id} not found`
-      });
+      return handleNotFound(`Playlist ${req.params.id} not found`, res);
     }
     res.json(results[0]);
   });
@@ -41,6 +39,41 @@ app.post('/api/playlists/:id/tracks', (req, res) => {
       return handleSQLError(err, res);
     }
     res.status(200).end();
+  });
+});
+
+app.get('/api/playlists/:id/tracks', (req, res) => {
+  db.query('SELECT * FROM playlist WHERE id = ?', [req.params.id], (err, results) => {
+    if (err) {
+      return handleSQLError(err, res);
+    }
+    if (!results.length) {
+      return res.status(404).json({
+        error: `Playlist ${req.params.id} not found`
+      });
+    }
+    
+    db.query(
+      'SELECT * FROM track WHERE playlist_id = ?', [req.params.id],
+      (err, results) => {
+        if (err) {
+          return handleSQLError(err, res);
+        }
+        res.json(results);
+      });
+  });
+});
+
+app.delete('/api/playlists/:playlistId/tracks/:trackId', (req, res) => {
+  const { playlistId, trackId } = req.params;
+  db.query('DELETE FROM track WHERE playlist_id = ? AND id = ?', [playlistId, trackId], (err, results) => {
+    if (err) {
+      return handleSQLError(err, res);
+    }
+    if (results.affectedRows === 0) {
+      return handleNotFound(`Track ${trackId} not found on playlist ${playlistId}`, res);
+    }
+    res.status(204).end();
   });
 });
 
