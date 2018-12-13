@@ -31,6 +31,19 @@ app.get('/api/playlists/:id', (req, res) => {
   });
 });
 
+app.post('/api/playlists/:id/tracks', (req, res) => {
+  const trackData = {
+    ...req.body,
+    playlist_id: req.params.id
+  };
+  db.query('INSERT INTO track SET ?', trackData, (err, results) => {
+    if (err) {
+      return handleSQLError(err, res);
+    }
+    res.status(200).end();
+  });
+});
+
 app.listen(6000, err => {
   if (err) {
     console.error(err);
