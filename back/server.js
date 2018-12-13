@@ -17,6 +17,23 @@ app.post('/api/playlists', (req, res) => {
   });
 });
 
+const queryToWhereKeys = query => Object.keys(query)
+  .map(key => `${key} LIKE ?`).join(' AND ');
+
+app.get('/api/playlists', (req, res) => {
+  // { genre: 'Rock', title: 'Divers' }
+  // WHERE genre='Rock' AND title='Divers'
+  const criteria = queryToWhereKeys(req.query);
+  const where = criteria ? ` WHERE ${criteria}` : '';
+  const values = Object.values(req.query).map(val => `%${val}%`);
+  db.query(`SELECT * FROM playlist ${where}`, values, (err, results) => {
+    if (err) {
+      return handleSQLError(err, res);
+    }
+    res.json(results);
+  });
+});
+
 app.get('/api/playlists/:id', (req, res) => {
   db.query('SELECT * FROM playlist WHERE id = ?', [req.params.id], (err, results) => {
     if (err) {
@@ -74,6 +91,21 @@ app.delete('/api/playlists/:playlistId/tracks/:trackId', (req, res) => {
       return handleNotFound(`Track ${trackId} not found on playlist ${playlistId}`, res);
     }
     res.status(204).end();
+  });
+});
+
+app.put('/api/playlists/:playlistId/tracks/:trackId', (req, res) => {
+  const { playlistId, trackId } = req.params;
+  db.query('UPDATE track SET ? WHERE playlist_id = ? AND id = ?', [req.body, playlistId, trackId], (err, results) => {
+    if (err) {
+      return handleSQLError(err, res);
+    }
+    if (results.affectedRows === 0) {
+      return handleNotFound(`Track ${trackId} not found on playlist ${playlistId}`, res);
+    }
+    db.query('SELECT * FROM track WHERE playlist_id = ? AND id = ?', [playlistId, trackId], (err, results) => {
+      return res.json(results[0]);
+    });
   });
 });
 
